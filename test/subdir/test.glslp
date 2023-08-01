@@ -1,0 +1,10 @@
+variable="image.png"
+variable= "picture.jpg"
+variable =img.png
+variable = pic.jpg
+
+shader0 = "../test.slang"
+shader22=        ..test.glsl
+shader999 = "should_not_match.glsl
+
+#reference path/../shader.slang

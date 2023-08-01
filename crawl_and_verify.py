@@ -30,6 +30,37 @@ def get_includes_from_shader(file_path):
     return included_files
 
 
+def get_includes_from_preset(file_path):
+    # Possible patterns:
+    # 1. #reference "/path/to/file.slangp"
+    # 2. shader<number> = shaders/some_shader.slang
+    # 3. <variable name> = "../path/to/image.png"
+    # All paths can be with or without double quotes, but must be symmetric.
+    # Comments are lines that start with '#'
+    # Paths to texture images are declared with
+    # 'textures = "list;of;textures", but we can ignore these and use a simpler pattern.
+    patterns = [r'#reference\s+"(.*?)"', r'#reference\s+([^"\s]+)(?!\S)',
+                r'shader\d+\s*=\s*"(.*?)"', r'shader\d+\s*=\s*([^"\s]+)(?!\S)',
+                r'[a-zA-Z0-9]+\s*=\s*"([^"\s]*\.(?:png|jpg))"', r'[a-zA-Z0-9]+\s*=\s*([^"\s]*\.(?:png|jpg))(?!\S)']
+    result = []
+
+    try:
+        with open(file_path, 'r') as file:
+            for line in file:
+                line = line.strip()
+                if line.startswith('#') and not line.startswith('#reference'):
+                    continue
+
+                for pattern in patterns:
+                    match = re.search(pattern, line)
+                    if match is not None:
+                        result.append(match.group(1))
+    except Exception as e:
+        print(f"Error processing file {file_path}: ", e)
+
+    return result
+
+
 def find_similar_include(original_include, all_files):
     # Finds the most similar include fill in the list of all files.
     # Only considers files that match the exact file name,
@@ -48,7 +79,7 @@ def find_similar_include(original_include, all_files):
     return suggested_include
 
 
-def _count_file_extensions(file_paths):
+def count_file_extensions(file_paths):
     extension_counts = defaultdict(int)
 
     for file_path in file_paths:
@@ -63,8 +94,9 @@ def _count_file_extensions(file_paths):
 
 
 def crawl_and_verify(crawl_path):
-    source_code_extensions = ['.glsl', '.slang', '.h', '.inc', '.params', '.hlsl']
-    # preset_extensions = ['.glslp', '.slangp']
+    source_code_extensions = ['.glsl', '.slang',
+                              '.h', '.inc', '.params', '.hlsl']
+    preset_extensions = ['.glslp', '.slangp']
     all_files = []
     all_includes = {}
 
@@ -74,6 +106,7 @@ def crawl_and_verify(crawl_path):
         parts = directory.split(os.path.sep)
         if any(part.startswith(".") for part in parts):
             continue
+
         for file in files:
             file_path = os.path.relpath(os.path.normpath(
                 os.path.join(directory, file)), crawl_path)
@@ -91,10 +124,21 @@ def crawl_and_verify(crawl_path):
                             os.path.normpath(
                                 os.path.join(directory, include)),
                             crawl_path))
+            elif ext in preset_extensions:
+                includes = get_includes_from_preset(
+                    os.path.join(directory, file))
+                print(file_path, includes)
+                all_includes[file_path] = []
+                for include in includes:
+                    all_includes[file_path].append(
+                        os.path.relpath(
+                            os.path.normpath(
+                                os.path.join(directory, include)),
+                            crawl_path))
 
     # print(all_files)
     # print(all_includes)
-    # _count_file_extensions(all_files)
+    # count_file_extensions(all_files)
 
     # In a second pass, verifies all includes.
     # If a file is missing, a suggested replacement is searched for.
