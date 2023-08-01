@@ -5,29 +5,26 @@ from difflib import SequenceMatcher
 from pathlib import Path
 
 
-def get_includes_from_shader(c_file_path):
+def get_includes_from_shader(file_path):
+    # Loads a file, then strips all comments before
+    # finding all includes.
     included_files = []
     include_pattern = r'#\s*include\s*["<](.+?)[">]'
     single_line_comment_pattern = r'\/\/.*?$'
     multi_line_comment_pattern = r'\/\*.*?\*\/'
 
-    with open(c_file_path, 'r') as file:
-        content = file.read()
-
-        # Remove single-line comments
-        content = re.sub(single_line_comment_pattern,
-                         '', content, flags=re.MULTILINE)
-
-        # Remove multi-line comments
-        content = re.sub(multi_line_comment_pattern,
-                         '', content, flags=re.DOTALL)
-
-        # Find all include statements using regular expressions
-        matches = re.findall(include_pattern, content)
-
-        # Process each match and add the included file paths to the list
-        for match in matches:
-            included_files.append(match)
+    try:
+        with open(file_path, 'r') as file:
+            content = file.read()
+            content = re.sub(single_line_comment_pattern,
+                             '', content, flags=re.MULTILINE)
+            content = re.sub(multi_line_comment_pattern,
+                             '', content, flags=re.DOTALL)
+            matches = re.findall(include_pattern, content)
+            for match in matches:
+                included_files.append(match)
+    except Exception as e:
+        print(f"Error processing file {file_path}: ", e)
 
     return included_files
 
@@ -50,23 +47,34 @@ def find_similar_include(original_include, all_files):
     return suggested_include
 
 
-def crawl_and_verify(directory_path):
+def crawl_and_verify(crawl_path):
     all_files = []
     all_includes = {}
 
     # In a first pass, collects all file paths and all includes.
-    for directory, _, files in os.walk(directory_path):
+    for directory, _, files in os.walk(crawl_path):
+        # Skip .git and similar folders
+        parts = directory.split(os.path.sep)
+        if any(part.startswith(".") for part in parts):
+            continue
         for file in files:
-            file_path = os.path.normpath(os.path.join(directory, file))
-            all_files.append(os.path.relpath(file_path, directory_path))
+            file_path = os.path.relpath(os.path.normpath(
+                os.path.join(directory, file)), crawl_path)
+            all_files.append(file_path)
             _, ext = os.path.splitext(file)
             if ext in ['.glsl', '.slang']:
-                includes = get_includes_from_shader(file_path)
+                includes = get_includes_from_shader(
+                    os.path.join(directory, file))
                 all_includes[file_path] = []
                 for include in includes:
-                    include_path = os.path.join(directory, include)
                     all_includes[file_path].append(
-                        os.path.normpath(include_path))
+                        os.path.relpath(
+                            os.path.normpath(
+                                os.path.join(directory, include)),
+                            crawl_path))
+
+    # print(all_files)
+    # print(all_includes)
 
     # In a second pass, verifies all includes.
     # If a file is missing, a suggested replacement is searched for.
