@@ -127,7 +127,7 @@ def crawl_and_verify(crawl_path):
             elif ext in preset_extensions:
                 includes = get_includes_from_preset(
                     os.path.join(directory, file))
-                print(file_path, includes)
+                # print(file_path, includes)
                 all_includes[file_path] = []
                 for include in includes:
                     all_includes[file_path].append(
