@@ -3,6 +3,7 @@ import re
 import argparse
 from difflib import SequenceMatcher
 from pathlib import Path
+from collections import defaultdict
 
 
 def get_includes_from_shader(file_path):
@@ -47,7 +48,23 @@ def find_similar_include(original_include, all_files):
     return suggested_include
 
 
+def _count_file_extensions(file_paths):
+    extension_counts = defaultdict(int)
+
+    for file_path in file_paths:
+        _, extension = os.path.splitext(file_path)
+        extension_counts[extension] += 1
+
+    sorted_counts = sorted(extension_counts.items(),
+                           key=lambda item: item[1], reverse=True)
+
+    for extension, count in sorted_counts:
+        print(f"{extension}: {count}")
+
+
 def crawl_and_verify(crawl_path):
+    source_code_extensions = ['.glsl', '.slang', '.h', '.inc', '.params', '.hlsl']
+    # preset_extensions = ['.glslp', '.slangp']
     all_files = []
     all_includes = {}
 
@@ -62,7 +79,9 @@ def crawl_and_verify(crawl_path):
                 os.path.join(directory, file)), crawl_path)
             all_files.append(file_path)
             _, ext = os.path.splitext(file)
-            if ext in ['.glsl', '.slang']:
+            # if len(ext) == 0:
+            #     print(f"file without file ending: {file_path}")
+            if ext in source_code_extensions:
                 includes = get_includes_from_shader(
                     os.path.join(directory, file))
                 all_includes[file_path] = []
@@ -75,6 +94,7 @@ def crawl_and_verify(crawl_path):
 
     # print(all_files)
     # print(all_includes)
+    # _count_file_extensions(all_files)
 
     # In a second pass, verifies all includes.
     # If a file is missing, a suggested replacement is searched for.
