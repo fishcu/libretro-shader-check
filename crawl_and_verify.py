@@ -145,7 +145,7 @@ def crawl_and_verify(crawl_path):
     for file_path, includes in all_includes.items():
         missing_includes = [x for x in includes if x not in all_files]
         if len(missing_includes):
-            print(f"Missing includes in {file_path}:")
+            print(f"\nMissing includes in {file_path}:")
         for missing_include in missing_includes:
             print(f"\t{missing_include}")
             suggested_include = find_similar_include(
