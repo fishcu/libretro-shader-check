@@ -15,7 +15,7 @@ def get_includes_from_shader(file_path):
     multi_line_comment_pattern = r'\/\*.*?\*\/'
 
     try:
-        with open(file_path, 'r') as file:
+        with open(file_path, 'r', errors='ignore') as file:
             content = file.read()
             content = re.sub(single_line_comment_pattern,
                              '', content, flags=re.MULTILINE)
@@ -45,7 +45,7 @@ def get_includes_from_preset(file_path):
     result = []
 
     try:
-        with open(file_path, 'r') as file:
+        with open(file_path, 'r', errors='ignore') as file:
             for line in file:
                 line = line.strip()
                 if line.startswith('#') and not line.startswith('#reference'):
